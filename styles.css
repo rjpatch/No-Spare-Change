@@ -1,0 +1,252 @@
+/* ---------- Colors and sizes (change the accent here) ---------- */
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --text: #1c2326;
+  --muted: #4a5559;
+  --line: #c9cfd1;
+  --accent: #0e5a6b;        /* the one accent color */
+  --accent-text: #ffffff;   /* text on top of the accent */
+  --accent-soft: #e3f0f2;
+  --warn-bg: #fff4d6;
+  --warn-text: #5b4300;
+  --focus: #b3470a;
+  --radius: 10px;
+  --gap: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14181a;
+    --surface: #1d2326;
+    --text: #eef1f2;
+    --muted: #b9c3c6;
+    --line: #4b575b;
+    --accent: #8fd3e0;
+    --accent-text: #0c1c20;
+    --accent-soft: #223b41;
+    --warn-bg: #3d3210;
+    --warn-text: #ffe7a3;
+    --focus: #ffb37a;
+  }
+}
+
+/* ---------- Basics ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;          /* 16px minimum everywhere */
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+.wrap { max-width: 72rem; margin: 0 auto; padding: 0 1rem; }
+
+h1, h2, h3, h4, p, ul, dl, dd { margin: 0; }
+
+a { color: var(--accent); text-underline-offset: 0.15em; }
+
+/* One visible focus ring for everything */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+.skip-link {
+  position: absolute; left: 0.5rem; top: -6rem;
+  background: var(--surface); color: var(--accent);
+  padding: 0.75rem 1rem; border: 2px solid var(--accent); border-radius: var(--radius); z-index: 2000;
+}
+.skip-link:focus { top: 0.5rem; }
+
+/* ---------- Header ---------- */
+.site-header { padding: 1rem 0 0.75rem; }
+.site-header h1 { font-size: 1.5rem; line-height: 1.2; letter-spacing: -0.01em; }
+.subhead { margin-top: 0.5rem; }
+.lede { margin-top: 0.5rem; color: var(--muted); }
+
+@media (min-width: 40rem) {
+  .site-header { padding-top: 2rem; }
+  .site-header h1 { font-size: 2.25rem; }
+  .subhead { font-size: 1.125rem; }
+}
+
+/* ---------- Expandable sections ---------- */
+details {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+details + * { margin-top: var(--gap); }
+summary {
+  cursor: pointer;
+  min-height: 48px;
+  padding: 0.6rem 1rem;
+  display: flex; align-items: center; gap: 0.5rem;
+  list-style: none;
+  border-radius: var(--radius);
+}
+summary::-webkit-details-marker { display: none; }
+summary::before {
+  content: "+";
+  flex: none; width: 1.5rem; height: 1.5rem; line-height: 1.4rem; text-align: center;
+  border: 2px solid currentColor; border-radius: 50%; font-weight: 700;
+}
+details[open] > summary::before { content: "\2212"; }
+summary h2 { font-size: 1.0625rem; line-height: 1.3; display: inline; }
+.details-body { padding: 0 1rem 1rem; }
+.details-body p + p { margin-top: 0.75rem; }
+
+.help-now { border-left: 6px solid var(--accent); }
+
+/* Tap-to-call links: bold, underlined, with a tall tap area */
+a.tel {
+  display: inline-block;
+  font-weight: 700;
+  padding: 0.65rem 0.35rem; margin: -0.65rem -0.1rem;
+  min-width: 44px;
+}
+
+.how { margin-top: 1.5rem; }
+
+/* ---------- Controls ---------- */
+.controls { margin-top: var(--gap); display: grid; gap: var(--gap); }
+.control-label { font-weight: 700; margin-bottom: 0.4rem; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+.chip, .btn {
+  font: inherit; color: var(--text);
+  min-height: 44px; min-width: 44px;
+  padding: 0.5rem 0.9rem;
+  border: 2px solid var(--accent); border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.chip { display: inline-flex; align-items: center; gap: 0.35rem; }
+.chip-check { display: none; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); font-weight: 700; }
+.chip[aria-pressed="true"] .chip-check { display: inline; }
+.chip[aria-pressed="true"] .chip-check::before { content: "\2713"; }   /* a check mark, so color isn't the only signal */
+.chip:disabled { border-style: dashed; border-color: var(--line); color: var(--muted); cursor: not-allowed; }
+
+.btn { border-radius: var(--radius); }
+.btn-secondary { color: var(--accent); font-weight: 600; }
+.btn-link { border-color: transparent; background: none; color: var(--accent); text-decoration: underline; padding-left: 0.25rem; padding-right: 0.25rem; }
+
+.near-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.zip-field { display: flex; align-items: center; gap: 0.5rem; }
+.zip-field input {
+  font: inherit; color: var(--text); background: var(--surface);
+  width: 5.5rem; min-height: 44px; padding: 0.4rem 0.6rem;
+  border: 2px solid var(--muted); border-radius: var(--radius);
+}
+.zip-field input:disabled { border-style: dashed; border-color: var(--line); }
+
+.status { margin-top: 0.4rem; min-height: 1.5rem; }
+.status:empty { min-height: 0; margin-top: 0; }
+.status.is-error { font-weight: 700; }
+.status.is-error::before { content: "! "; }
+.note { color: var(--muted); margin-top: 0.4rem; }
+
+/* ---------- Layout: phone = map above list; wide = list left, map right ---------- */
+.layout { margin-top: var(--gap); display: grid; gap: var(--gap); }
+
+#map { height: 40vh; min-height: 200px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--accent-soft); z-index: 0; }
+.map-toggle { margin-bottom: 0.5rem; }
+#map-holder[hidden], #map[hidden] { display: none; }
+
+@media (min-width: 56rem) {
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .list-section { grid-column: 1; grid-row: 1; }
+  .map-section { grid-column: 2; grid-row: 1; position: sticky; top: 1rem; }
+  #map { height: calc(100vh - 6rem); min-height: 320px; }
+  /* On wide screens the map always shows, so the Hide map button isn't needed */
+  .map-toggle { display: none; }
+  #map-holder[hidden] { display: block; }
+}
+
+/* ---------- List and cards ---------- */
+.list-section h2 { font-size: 1.25rem; }
+.org-list { list-style: none; padding: 0; margin-top: 0.75rem; display: grid; gap: var(--gap); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+  scroll-margin-top: 1rem;
+}
+.card.is-highlighted { border-color: var(--accent); border-left-width: 12px; box-shadow: 0 0 0 2px var(--accent); }
+.card h3 { font-size: 1.1875rem; line-height: 1.3; }
+.card .program { font-weight: 600; }
+.card .where, .card .address { color: var(--muted); }
+.card .selected-flag { font-weight: 700; margin-top: 0.25rem; }
+
+.card h4 { font-size: 1rem; margin-top: 0.9rem; }
+.card dl { margin-top: 0.25rem; }
+.card dt { font-weight: 700; margin-top: 0.5rem; }
+.card dd, .card p { white-space: pre-line; }   /* keeps line breaks typed in the sheet */
+.card dl.this-month dt { display: inline; }
+.card dl.this-month dt::after { content: ": "; }
+.card dl.this-month dd { display: inline; }
+.card dl.this-month div { margin-top: 0.25rem; }
+.not-confirmed { margin-top: 0.25rem; font-style: italic; }
+
+.freshness { margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px solid var(--line); color: var(--muted); }
+.stale-flag {
+  display: inline-block; margin-top: 0.35rem; padding: 0.1rem 0.5rem;
+  background: var(--warn-bg); color: var(--warn-text); border-radius: 6px; font-weight: 700;
+}
+.stale-flag::before { content: "\26A0\FE0E  "; }
+
+.actions { margin-top: 0.9rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.btn-primary {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 48px; padding: 0.6rem 1rem;
+  background: var(--accent); color: var(--accent-text);
+  border: 2px solid var(--accent); border-radius: var(--radius);
+  font-weight: 700; text-decoration: none; text-align: center;
+  flex: 1 1 100%;
+}
+.source-link, .actions .btn-link { display: inline-flex; align-items: center; min-height: 44px; }
+
+.empty { margin-top: 0.75rem; padding: 1rem; background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); }
+
+/* ---------- Map pins ---------- */
+.pin { background: none; border: 0; display: flex; align-items: flex-end; justify-content: center; }
+.pin-shape {
+  width: 26px; height: 26px; margin-bottom: 6px;
+  background: #0e5a6b; border: 3px solid #ffffff; border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+.pin.is-selected .pin-shape { width: 36px; height: 36px; background: #b3470a; }
+.pin:focus-visible { outline: 3px solid #b3470a; outline-offset: 0; border-radius: 8px; }
+
+/* Bigger map buttons and readable credit text */
+.leaflet-touch .leaflet-bar a, .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; font-size: 1.5rem; }
+.leaflet-container { font: inherit; }
+.leaflet-container .leaflet-control-attribution { font-size: 1rem; line-height: 1.4; padding: 2px 6px; }
+.leaflet-container .leaflet-control-attribution a { color: #0e5a6b; }
+
+/* ---------- Footer ---------- */
+.site-footer { margin-top: 2rem; padding: 1.5rem 0 2.5rem; border-top: 1px solid var(--line); color: var(--muted); }
+.site-footer p + p { margin-top: 0.6rem; }
+
+/* ---------- Less motion for people who ask for it ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}

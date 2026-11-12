@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>No spare change? Here's how you can help.</title>
+  <meta name="description" content="Real needs from NYC organizations serving homeless New Yorkers, checked every month. Give time, items or skills, and sign up with the organization directly.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#list-heading">Skip to the list of organizations</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <h1>No spare change? Here's how you can help.</h1>
+      <p class="subhead">Real needs from NYC organizations serving homeless New Yorkers, checked every month.</p>
+      <p class="lede">Pick a way to help, find a place near you, and sign up with them directly.</p>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap">
+
+      <!-- "See someone who needs help right now?" Closed by default. Text is fixed; please don't reword it. -->
+      <details class="help-now" id="help-now">
+        <summary><h2>See someone who needs help right now?</h2></summary>
+        <div class="details-body">
+          <p>If someone is in danger, on the subway tracks, or needs medical help, <a class="tel" href="tel:911">call 911</a>.</p>
+          <p>Otherwise, <a class="tel" href="tel:311">call 311</a> or use the 311 app and ask for homeless outreach. The City says its outreach teams try to reach the person within an average of one hour.</p>
+          <p>In extreme cold the City declares a Code Blue. From 4 pm to 8 am during one, 311 sends these requests straight to 911.</p>
+          <p>Outreach workers offer shelter and services. Accepting them is the person's choice.</p>
+          <p>Sources: <a href="https://portal.311.nyc.gov/article/?kanumber=KA-01037" target="_blank" rel="noopener">NYC311<span class="visually-hidden"> (opens in a new tab)</span></a>, the <a href="https://www.nyc.gov/site/dhs/about/unsheltered-outreach.page" target="_blank" rel="noopener">NYC Department of Homeless Services<span class="visually-hidden"> (opens in a new tab)</span></a> and the City's <a href="https://www.nyc.gov/site/operations/projects/homestat/daily.page" target="_blank" rel="noopener">HOME-STAT page<span class="visually-hidden"> (opens in a new tab)</span></a>.</p>
+        </div>
+      </details>
+
+      <!-- Filters and "Near me" -->
+      <section class="controls" aria-labelledby="controls-heading">
+        <h2 id="controls-heading" class="visually-hidden">Narrow the list</h2>
+
+        <div class="control-group" role="group" aria-labelledby="filter-label">
+          <p id="filter-label" class="control-label">I can give</p>
+          <div class="chips">
+            <button type="button" class="chip" data-need="items" aria-pressed="false" disabled><span class="chip-check" aria-hidden="true"></span>Items <span class="chip-count" id="count-items">(0)</span></button>
+            <button type="button" class="chip" data-need="shifts" aria-pressed="false" disabled><span class="chip-check" aria-hidden="true"></span>Shifts <span class="chip-count" id="count-shifts">(0)</span></button>
+            <button type="button" class="chip" data-need="skills" aria-pressed="false" disabled><span class="chip-check" aria-hidden="true"></span>Skills <span class="chip-count" id="count-skills">(0)</span></button>
+          </div>
+        </div>
+
+        <div class="control-group" role="group" aria-labelledby="near-label">
+          <p id="near-label" class="control-label">Near me</p>
+          <div class="near-row">
+            <button type="button" class="btn btn-secondary" id="use-location">Use my location</button>
+            <div class="zip-field">
+              <label for="zip-input">or ZIP code</label>
+              <input id="zip-input" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" size="5" aria-describedby="near-status">
+              <button type="button" class="btn btn-secondary" id="zip-go">Go</button>
+            </div>
+            <button type="button" class="btn btn-link" id="clear-location" hidden>Clear location</button>
+          </div>
+          <p id="zip-note" class="note" hidden>ZIP search coming soon</p>
+          <p id="near-status" class="status" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <div class="layout">
+        <!-- Map. The list below is the full alternative to it. -->
+        <section class="map-section" id="map-section" aria-labelledby="map-heading">
+          <h2 id="map-heading" class="visually-hidden">Map</h2>
+          <button type="button" class="btn btn-secondary map-toggle" id="map-toggle" aria-expanded="true" aria-controls="map-holder">Hide map</button>
+          <div id="map-holder">
+            <div id="map" role="region" aria-label="Map of organization addresses. Every organization is also in the list."></div>
+            <p id="map-note" class="note" hidden></p>
+          </div>
+        </section>
+
+        <!-- List -->
+        <section class="list-section" aria-labelledby="list-heading">
+          <h2 id="list-heading" tabindex="-1">Organizations</h2>
+          <p id="result-count" class="status" role="status" aria-live="polite">Loading the list…</p>
+          <p id="saved-copy-note" class="note" hidden>Showing a saved copy of the list.</p>
+          <ul id="org-list" class="org-list"></ul>
+          <noscript><p>This page needs JavaScript turned on to show the list.</p></noscript>
+        </section>
+      </div>
+
+      <details class="how" id="how">
+        <summary><h2>How this works</h2></summary>
+        <div class="details-body">
+          <p>The information here comes from each organization, and every listing is checked once a month. Each one shows the date it was last checked.</p>
+          <p><strong>Not yet confirmed</strong> means the details were taken from the organization's website and the organization hasn't confirmed this month's needs with us yet.</p>
+          <p><strong>May be out of date</strong> means it has been more than <span id="stale-days">45</span> days since the listing was checked. Listings not checked for more than <span id="hide-days">60</span> days are taken down until they are checked again.</p>
+          <p>Always confirm with the organization before you go. You sign up with them, not with this site.</p>
+        </div>
+      </details>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>An independent volunteer project, not affiliated with any organization listed. Details change, so confirm with the organization before you go.</p>
+      <p id="contact-line" hidden>Run one of these organizations, or want yours listed? Email <a id="contact-link" href="#"></a>.</p>
+      <p>No cookies, no accounts. Your location never leaves your device.</p>
+      <p id="updated-line" hidden>List last updated <span id="updated-date"></span>.</p>
+    </div>
+  </footer>
+
+  <!-- Settings and data (your own files) -->
+  <script src="config.js"></script>
+  <script src="data/seed.js"></script>
+  <script src="data/nyc-zips.js"></script>
+  <!-- Papa Parse 5.4.1 (reads the CSV), from cdnjs. The page still shows the list if this fails to load. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- app.js loads the map library (Leaflet 1.9.4, from cdnjs) itself, after the list is on the page. -->
+  <script src="app.js"></script>
+</body>
+</html>

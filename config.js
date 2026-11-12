@@ -2,10 +2,10 @@
 // and keep the quote marks and the comma at the end of each line.
 window.CONFIG = {
   // The "Publish to web" CSV link for the orgs tab of your Google Sheet. Blank = use the saved copy in data/seed.js.
-  SHEET_CSV_URL: "",
+  SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQKWUlhr8OMHtqfBC3ftUfbpI-rUudRESu_oEKvuDvyqUok_Umg__I5viI9fyfS8zUW0DcAJJLyr-R7/pub?gid=510329143&single=true&output=csv",
 
   // The email address shown in the footer for organizations to reach you. Blank = that footer line is hidden.
-  CONTACT_EMAIL: "",
+  CONTACT_EMAIL: "createmailforthis",
 
   // Your Cloudflare Web Analytics token. Blank = analytics is off.
   CF_ANALYTICS_TOKEN: "",

@@ -6,27 +6,27 @@
   <title>No spare change? Here's how you can help.</title>
   <meta name="description" content="Real needs from NYC organizations serving homeless New Yorkers, checked every month. Give time, items or skills, and sign up with the organization directly.">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" href="data:,">
+  <meta name="theme-color" content="#e8eaeb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121417" media="(prefers-color-scheme: dark)">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-
+  <!-- The tab icon: a coin, drawn right here so no extra file is needed -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='17.5' r='13' fill='%2315171a'/%3E%3Ccircle cx='16' cy='14.5' r='12' fill='%23ffd21f' stroke='%2315171a' stroke-width='2'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <a class="skip-link" href="#list-heading">Skip to the list of organizations</a>
 
-  <header class="site-header">
-    <div class="wrap">
-      <h1>No spare change? Here's how you can help.</h1>
+  <!-- A gray veil over the map. app.js fades it out as you scroll down and back in near the bottom. -->
+  <div id="wash" aria-hidden="true"></div>
+
+  <header class="hero on-top">
+    <div class="hero-inner">
+      <h1><span>No spare change?</span> <span>Here's how you can help.</span></h1>
       <p class="subhead">Real needs from NYC organizations serving homeless New Yorkers, checked every month.</p>
       <p class="lede">Pick a way to help, find a place near you, and sign up with them directly.</p>
-    </div>
-  </header>
-
-  <main id="main">
-    <div class="wrap">
 
       <!-- "See someone who needs help right now?" Closed by default. Text is fixed; please don't reword it. -->
-      <details class="help-now" id="help-now">
+      <details class="help-now panel" id="help-now">
         <summary><h2>See someone who needs help right now?</h2></summary>
         <div class="details-body">
           <p>If someone is in danger, on the subway tracks, or needs medical help, <a class="tel" href="tel:911">call 911</a>.</p>
@@ -36,9 +36,14 @@
           <p>Sources: <a href="https://portal.311.nyc.gov/article/?kanumber=KA-01037" target="_blank" rel="noopener">NYC311<span class="visually-hidden"> (opens in a new tab)</span></a>, the <a href="https://www.nyc.gov/site/dhs/about/unsheltered-outreach.page" target="_blank" rel="noopener">NYC Department of Homeless Services<span class="visually-hidden"> (opens in a new tab)</span></a> and the City's <a href="https://www.nyc.gov/site/operations/projects/homestat/daily.page" target="_blank" rel="noopener">HOME-STAT page<span class="visually-hidden"> (opens in a new tab)</span></a>.</p>
         </div>
       </details>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="column">
 
       <!-- Filters and "Near me" -->
-      <section class="controls" aria-labelledby="controls-heading">
+      <section class="controls panel on-top" id="controls" aria-labelledby="controls-heading">
         <h2 id="controls-heading" class="visually-hidden">Narrow the list</h2>
 
         <div class="control-group" role="group" aria-labelledby="filter-label">
@@ -53,41 +58,64 @@
         <div class="control-group" role="group" aria-labelledby="near-label">
           <p id="near-label" class="control-label">Near me</p>
           <div class="near-row">
-            <button type="button" class="btn btn-secondary" id="use-location">Use my location</button>
+            <button type="button" class="btn" id="use-location">Use my location</button>
             <div class="zip-field">
               <label for="zip-input">or ZIP code</label>
               <input id="zip-input" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" size="5" aria-describedby="near-status">
-              <button type="button" class="btn btn-secondary" id="zip-go">Go</button>
+              <button type="button" class="btn" id="zip-go">Go</button>
             </div>
-            <button type="button" class="btn btn-link" id="clear-location" hidden>Clear location</button>
+            <button type="button" class="btn-text" id="clear-location" hidden>Clear location</button>
           </div>
           <p id="zip-note" class="note" hidden>ZIP search coming soon</p>
           <p id="near-status" class="status" role="status" aria-live="polite"></p>
         </div>
       </section>
 
-      <div class="layout">
-        <!-- Map. The list below is the full alternative to it. -->
-        <section class="map-section" id="map-section" aria-labelledby="map-heading">
-          <h2 id="map-heading" class="visually-hidden">Map</h2>
-          <button type="button" class="btn btn-secondary map-toggle" id="map-toggle" aria-expanded="true" aria-controls="map-holder">Hide map</button>
-          <div id="map-holder">
-            <div id="map" role="region" aria-label="Map of organization addresses. Every organization is also in the list."></div>
-            <p id="map-note" class="note" hidden></p>
+      <!-- The map fills the whole screen behind the page. The list is the full alternative to it. -->
+      <section class="map-section" id="map-section" aria-labelledby="map-heading">
+        <h2 id="map-heading" class="visually-hidden">Map</h2>
+        <!-- "Explore the map" view (phones): the page steps aside and the map takes the whole screen.
+             It sits just before the map so the keyboard reaches its buttons first, then the coins. -->
+        <div class="explore-ui" id="explore-ui" hidden>
+          <button type="button" class="btn explore-close" id="explore-close">Back to the list</button>
+          <div class="peek panel" id="peek" role="region" aria-live="polite" aria-label="Selected organization" hidden>
+            <div class="card-top">
+              <span class="coin" id="peek-coin" aria-hidden="true"></span>
+              <div>
+                <h2 id="peek-name"></h2>
+                <p class="where" id="peek-where"></p>
+              </div>
+            </div>
+            <div class="actions">
+              <a class="btn-primary" id="peek-signup" hidden></a>
+              <button type="button" class="btn-text" id="peek-details">See full details</button>
+            </div>
           </div>
-        </section>
+        </div>
+        <div id="map" role="region" aria-label="Map of organization addresses. Every organization is also in the list."></div>
+        <!-- On phones this is an open window onto the map, between the controls and the list. -->
+        <div class="map-window" id="map-window">
+          <p class="map-credit on-top" id="map-credit" hidden></p>
+        </div>
+      </section>
 
-        <!-- List -->
-        <section class="list-section" aria-labelledby="list-heading">
-          <h2 id="list-heading" tabindex="-1">Organizations</h2>
+      <!-- List -->
+      <section class="list-section" id="list-section" aria-labelledby="list-heading">
+        <div class="list-head panel on-top">
+          <div class="list-head-row">
+            <h2 id="list-heading" tabindex="-1">Organizations</h2>
+            <!-- Phones only: opens the map full-screen -->
+            <button type="button" class="btn" id="explore-open" hidden>Explore the map</button>
+          </div>
           <p id="result-count" class="status" role="status" aria-live="polite">Loading the list…</p>
           <p id="saved-copy-note" class="note" hidden>Showing a saved copy of the list.</p>
-          <ul id="org-list" class="org-list"></ul>
-          <noscript><p>This page needs JavaScript turned on to show the list.</p></noscript>
-        </section>
-      </div>
+          <p id="map-note" class="note" hidden></p>
+        </div>
+        <ul id="org-list" class="org-list"></ul>
+        <noscript><p class="panel on-top">This page needs JavaScript turned on to show the list.</p></noscript>
+      </section>
 
-      <details class="how" id="how">
+      <details class="how panel on-top" id="how">
         <summary><h2>How this works</h2></summary>
         <div class="details-body">
           <p>The information here comes from each organization, and every listing is checked once a month. Each one shows the date it was last checked.</p>
@@ -99,8 +127,8 @@
     </div>
   </main>
 
-  <footer class="site-footer">
-    <div class="wrap">
+  <footer class="site-footer on-top" id="footer">
+    <div class="footer-inner">
       <p>An independent volunteer project, not affiliated with any organization listed. Details change, so confirm with the organization before you go.</p>
       <p id="contact-line" hidden>Run one of these organizations, or want yours listed? Email <a id="contact-link" href="#"></a>.</p>
       <p>No cookies, no accounts. Your location never leaves your device.</p>

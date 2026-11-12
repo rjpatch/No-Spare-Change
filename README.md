@@ -13,8 +13,16 @@ This guide gets the site online and shows you how to keep it up to date. You don
 | `data/orgs.csv` | The starting list, for importing into Google Sheets |
 | `data/seed.js` | A saved copy of the list, used if the Google Sheet can't be reached |
 | `data/nyc-zips.js` | NYC ZIP code centers, from the Census Bureau, for "Near me" |
+| `fonts/` | The typeface (Libre Franklin, free to use; its license is in the same folder) |
 
-To look at the site before it's online, double-click `index.html`. The list works; the map background may stay gray until the site is on the web.
+**How the page looks and behaves**
+
+- The map fills the whole screen behind the page. It is a pale gray print at the top, comes into full color as you scroll to the list, and fades back to gray at the bottom.
+- Each organization is a numbered yellow coin on the map, and its card in the list carries the same number.
+- On a phone, scroll past the controls to see the map through an open window, or press **Explore the map** to use it full-screen. Tapping a coin there shows the organization's name and sign-up button.
+- On a computer, the list runs down the left and the map follows the card you're reading.
+
+To look at the site before it's online, double-click `index.html`. The list works; the map background may stay blank until the site is on the web.
 
 ---
 
@@ -66,7 +74,7 @@ From now on, changes you make in the sheet reach the site by themselves, usually
 
 1. On the new repository's page, click the link **uploading an existing file**.
 2. On your computer, unzip the .zip file and open the folder.
-3. Select everything inside it (`index.html`, `styles.css`, `app.js`, `config.js`, `README.md` and the `data` folder) and drag it all onto the GitHub page. Dragging keeps the `data` folder as a folder.
+3. Select everything inside it (`index.html`, `styles.css`, `app.js`, `config.js`, `README.md`, and the `data` and `fonts` folders) and drag it all onto the GitHub page. Dragging keeps the folders as folders.
 4. Wait for the files to finish loading, then click **Commit changes**.
 5. Check: the repository should now show `index.html` in its top-level list, not tucked inside another folder.
 
@@ -95,7 +103,7 @@ Run these on the live address. For the tests that need unusual data, add a tempo
 1. **Saved copy.** Skipped on the live site, because your sheet link is now set. (To try it, double-click `index.html` in the folder on your computer: five organizations and the note "Showing a saved copy of the list.")
 2. **Nothing invented.** Every card shows only what is in your sheet. Rows with no needs say "Not yet confirmed."
 3. **Freshness.** Add a row with `last_checked` 50 days ago: it shows "May be out of date." Change it to 70 days ago: it disappears. Set any row's status to `hidden`: it disappears.
-4. **No pin.** Add a row with blank `lat` and `lng`: it's in the list, with no pin and no "Show on map".
+4. **No coin.** Add a row with blank `lat` and `lng`: it's in the list, with no coin on the map and no "Show on map".
 5. **Odd text.** Put `<script>alert(1)</script>` in a needs field: it shows as plain text and nothing pops up. Put `javascript:alert(1)` in `signup_url`: that card has no sign-up button.
 6. **ZIP.** Type `10001` and press **Go**: Holy Apostles comes first. Type `90210`, then `abc`: both say "Enter a 5-digit NYC ZIP code."
 7. **Location denied.** Press **Use my location** and choose **Block** or **Don't allow**: a friendly note appears and the rest still works.
@@ -115,11 +123,27 @@ Run these on the live address. For the tests that need unusual data, add a tempo
 4. In that snippet, find `"token": "` followed by a long string of letters and numbers. Copy only that string.
 5. Edit `config.js` on GitHub (as in step 3C) and paste the string between the quote marks on the `CF_ANALYTICS_TOKEN` line.
 
-**Your own web address**
+**Your own web address (no "github" and no username in it)**
 
-1. Buy a domain name from any registrar.
-2. In the repository: **Settings > Pages > Custom domain**. Type the domain and click **Save**.
-3. GitHub shows the DNS records to add at your registrar. Add them, wait for the check to pass, then tick **Enforce HTTPS**.
+A free GitHub Pages address always contains your username and `github.io`. The way to get a clean address is to buy a domain name (about $10 to $20 a year) and point it at the site. Visitors then see only your domain, and the old `github.io` address forwards to it.
+
+1. Buy a domain from any registrar (for example Namecheap, Porkbun or Cloudflare). Below, `yourdomain.org` stands for whatever you buy.
+2. In the repository: **Settings > Pages > Custom domain**. Type `www.yourdomain.org` and click **Save**.
+3. At your registrar, open the domain's **DNS** settings and add these five records:
+
+   | Type | Host (or Name) | Value |
+   | --- | --- | --- |
+   | CNAME | `www` | `YOUR-USERNAME.github.io` |
+   | A | `@` | `185.199.108.153` |
+   | A | `@` | `185.199.109.153` |
+   | A | `@` | `185.199.110.153` |
+   | A | `@` | `185.199.111.153` |
+
+   These four numbers are GitHub's. If they don't work, search for GitHub's help page "Managing a custom domain for your GitHub Pages site" and use the numbers listed there.
+4. Back in **Settings > Pages**, wait for the DNS check to pass. This usually takes under an hour and can take a day.
+5. Tick **Enforce HTTPS**.
+
+The repository itself stays public under your GitHub username for anyone who goes looking for it. If you'd rather that name were neutral too, click your picture at the top right of GitHub, then **Settings > Account > Change username**, and update the CNAME record above to match.
 
 **A different map background**
 
@@ -149,7 +173,7 @@ If you skip this, the saved copy empties itself 60 days after its dates, and a v
 
 - `id`: a short unique name, lowercase with hyphens.
 - `signup_url` and `source_url` must start with `https://` or `mailto:`. Anything else is left off the card.
-- `lat` and `lng`: in Google Maps, right-click the building and click the two numbers at the top of the menu to copy them. The first is `lat`, the second is `lng`. If you're unsure, leave both blank; the row is listed without a pin.
+- `lat` and `lng`: in Google Maps, right-click the building and click the two numbers at the top of the menu to copy them. The first is `lat`, the second is `lng`. If you're unsure, leave both blank; the row is listed without a coin on the map.
 - Only ever enter an organization's public address. Never enter the location of a shelter that keeps its address private, a domestic violence program, an encampment, or a person.
 
 **What the labels on the site mean**
@@ -165,6 +189,16 @@ If you skip this, the saved copy empties itself 60 days after its dates, and a v
 
 The 45 and 60 are `STALE_DAYS` and `HIDE_DAYS` in `config.js`.
 
+## 7. Replacing files later
+
+When you get new versions of the site's files:
+
+1. Open the repository on GitHub and click **Add file > Upload files**.
+2. Drag in the new files and folders. Anything with the same name is replaced.
+3. Click **Commit changes**. The live site updates in a minute or two.
+
+Don't upload a new `config.js` unless you mean to: the one on GitHub holds your sheet link and contact email.
+
 ---
 
 ## If something breaks
@@ -174,13 +208,15 @@ The 45 and 60 are `STALE_DAYS` and `HIDE_DAYS` in `config.js`.
 | "Showing a saved copy of the list." and your recent changes are missing | The sheet isn't published, or the link in `config.js` is wrong | Redo step 2, and paste the link again in step 3C. The link must end in `output=csv`. |
 | Same note, and the link looks right | The wrong tab was published, so the site can't find the headers | In **File > Share > Publish to web**, choose **orgs**, not **Entire Document** or another tab. |
 | Same note, right after you edited row 1 | The `name`, `last_checked` or `status` header was renamed | Change the header back to exactly that spelling, in lowercase. |
-| One kind of detail is missing from every card (no needs, no sign-up buttons, or no pins) | A different header was renamed, for example `needs_items`, `signup_url`, or `lat` | Change the header back. The exact headers are listed in row 1 of `data/orgs.csv`. |
+| One kind of detail is missing from every card (no needs, no sign-up buttons, or no coins on the map) | A different header was renamed, for example `needs_items`, `signup_url`, or `lat` | Change the header back. The exact headers are listed in row 1 of `data/orgs.csv`. |
 | One organization has disappeared | Its date is mistyped (for example `2026-1-5` or `Dec 1`), is more than 60 days old, or is in the future; or its status is misspelled; or its name is blank | Fix the `last_checked` box (`YYYY-MM-DD`) or the `status` box. |
 | Every organization has disappeared: "No current listings. Check back soon." | Google reformatted the date column (dates look like `11/10/2026`), or every date is more than 60 days old | Click the letter above `last_checked`, then **Format > Number > Plain text**, and retype the dates as `YYYY-MM-DD`. |
 | A card has no sign-up button or no "Source" link | The link doesn't start with `https://` or `mailto:` | Fix the link in the sheet. |
-| An organization is listed but has no pin | `lat` or `lng` is blank or isn't a number | Add both numbers, or leave it; the listing still works. |
+| An organization is listed but has no coin on the map | `lat` or `lng` is blank or isn't a number | Add both numbers, or leave it; the listing still works. |
 | "The map couldn't load. Every organization is in the list." | The visitor is offline, or something is blocking the map library | Nothing to fix; the list is complete without the map. |
-| The map is gray but the pins show | The map background was refused. This is normal when you open `index.html` straight from your computer | Check the live site instead. |
+| The coins show but there are no streets behind them, even after scrolling to the list | The map background was refused. This is normal when you open `index.html` straight from your computer | Check the live site instead. |
+| The map looks pale and gray at the top of the page | That's the design: it comes into color as you scroll down | Nothing to fix. |
+| The headline looks like a plain font | The `fonts` folder didn't upload | Upload the `fonts` folder again (section 7). |
 | A valid ZIP code says "Enter a 5-digit NYC ZIP code." | A few ZIPs are only PO boxes or single buildings and aren't in the Census file | Try a neighboring ZIP. |
 | You changed the sheet and the site hasn't changed | Google takes up to about five minutes to republish | Wait, then reload the page. |
 | The footer email, or your settings, stopped working after you edited `config.js` | A quote mark or comma was deleted | Compare each line with the original: `NAME: "value",` |

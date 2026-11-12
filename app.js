@@ -5,6 +5,7 @@
  *   2. Cleans each row and drops anything hidden or too old.
  *   3. Draws the cards, the filter chips and the "Near me" controls.
  *   4. Loads the map (Leaflet) last, so the list never waits for it.
+ *   5. Fades the map between gray and full color as the page scrolls.
  *
  * Safety rules kept throughout:
  *   - Text from the sheet is only ever placed with textContent, never innerHTML.
@@ -36,11 +37,19 @@
     filters: { items: false, shifts: false, skills: false },
     origin: null,        // { lat, lng } once a location or ZIP is set
     usingSeed: false,
-    selectedKey: null,   // the card/pin currently highlighted
+    activeKey: null,     // the card and coin currently highlighted
     map: null,
     markerLayer: null,
-    markers: {}
+    markers: {},
+    byKey: {},           // organizations currently in the list, by key
+    exploring: false,    // true while "Explore the map" is open
+    bloomed: false,      // true once the coins have dropped onto the map
+    lockUntil: 0         // pauses scroll-following for a moment after a tap
   };
+
+  var root = document.documentElement;
+  var wideScreen = window.matchMedia ? window.matchMedia("(min-width: 56rem)") : { matches: false };
+  function isWide() { return wideScreen.matches; }
 
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -290,40 +299,63 @@
     list.appendChild(row);
   }
 
+  function signupLabel(org) {
+    return (/^mailto:/i.test(org.signupUrl) ? "Email " : "Sign up with ") + org.name;
+  }
+
+  // Points a link at an organization's sign-up page. Web pages open in a new tab; email links don't.
+  function fillSignupLink(link, org) {
+    link.textContent = signupLabel(org);
+    link.href = org.signupUrl;
+    if (/^mailto:/i.test(org.signupUrl)) {
+      link.removeAttribute("target");
+      link.removeAttribute("rel");
+    } else {
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.appendChild(el("span", "visually-hidden", " (opens in a new tab)"));
+    }
+  }
+
   function buildCard(org) {
     var item = el("li");
     var card = el("article", "card");
     card.id = "card-" + org.key;
-    if (org.key === state.selectedKey) card.classList.add("is-highlighted");
+    if (org.key === state.activeKey) card.classList.add("is-active");
 
+    // The coin with this organization's number (the same number is on its map marker)
+    var top = el("div", "card-top");
+    var coin = el("span", "coin", String(org.num));
+    coin.setAttribute("aria-hidden", "true");
+    top.appendChild(coin);
+    var title = el("div");
     var heading = el("h3", "", org.name);
     heading.tabIndex = -1;
-    card.appendChild(heading);
-    if (org.program) card.appendChild(el("p", "program", org.program));
+    title.appendChild(heading);
+    if (org.program) title.appendChild(el("p", "program", org.program));
+    top.appendChild(title);
+    card.appendChild(top);
 
     var where = [org.neighborhood, org.borough].filter(Boolean).join(", ");
-    if (org.miles !== null && org.miles !== undefined) {
-      var distance = org.miles < 0.1 ? "less than 0.1 mi away" : "about " + org.miles.toFixed(1) + " mi away";
-      where = where ? where + " · " + distance : distance;
-    }
     if (where) card.appendChild(el("p", "where", where));
     if (org.address) card.appendChild(el("p", "address", org.address));
-
-    var flag = el("p", "selected-flag", "Selected on the map");
-    flag.hidden = org.key !== state.selectedKey;
-    card.appendChild(flag);
+    if (org.miles !== null && org.miles !== undefined) {
+      card.appendChild(el("p", "distance", org.miles < 0.1 ? "less than 0.1 mi away" : "about " + org.miles.toFixed(1) + " mi away"));
+    }
 
     // This month's needs
-    card.appendChild(el("h4", "", "This month"));
+    var month = el("div", "month");
+    month.appendChild(el("h4", "", "This month"));
     if (org.items || org.shifts || org.skills) {
       var needs = el("dl", "this-month");
       addDetail(needs, "Items", org.items);
       addDetail(needs, "Shifts", org.shifts);
       addDetail(needs, "Skills", org.skills);
-      card.appendChild(needs);
+      month.appendChild(needs);
     } else {
-      card.appendChild(el("p", "not-confirmed", "Not yet confirmed"));
+      month.appendChild(el("p", "not-confirmed", "Not yet confirmed"));
     }
+    card.appendChild(month);
 
     // Standing details, each only if filled in
     if (org.waysToHelp || org.requirements || org.bookAhead || org.howToHelp) {
@@ -349,14 +381,8 @@
     // Buttons and links
     var actions = el("div", "actions");
     if (org.signupUrl) {
-      var isEmail = /^mailto:/i.test(org.signupUrl);
-      var signup = el("a", "btn-primary", (isEmail ? "Email " : "Sign up with ") + org.name);
-      signup.href = org.signupUrl;
-      if (!isEmail) {
-        signup.target = "_blank";
-        signup.rel = "noopener";
-        signup.appendChild(el("span", "visually-hidden", " (opens in a new tab)"));
-      }
+      var signup = el("a", "btn-primary");
+      fillSignupLink(signup, org);
       actions.appendChild(signup);
     }
     if (org.sourceUrl) {
@@ -370,10 +396,10 @@
       actions.appendChild(source);
     }
     if (org.hasPin && state.map) {
-      var show = el("button", "btn btn-link", "Show on map");
+      var show = el("button", "btn-text", "Show on map");
       show.type = "button";
       show.appendChild(el("span", "visually-hidden", ": " + org.name));
-      show.addEventListener("click", function () { selectOrg(org.key, "card"); });
+      show.addEventListener("click", function () { showOnMap(org.key); });
       actions.appendChild(show);
     }
     if (actions.childNodes.length) card.appendChild(actions);
@@ -395,7 +421,7 @@
 
   function plural(n) { return n === 1 ? "1 organization" : n + " organizations"; }
 
-  // Redraws the chips, the count, the cards and the pins from the current state.
+  // Redraws the chips, the count, the cards and the coins from the current state.
   function render() {
     updateChips();
     var list = visibleOrgs();
@@ -403,7 +429,13 @@
     var listNode = $("org-list");
     listNode.textContent = "";
 
-    if (!list.some(function (org) { return org.key === state.selectedKey; })) state.selectedKey = null;
+    // Number the list from 1 in its current order. Each coin on the map carries the same number.
+    state.byKey = {};
+    list.forEach(function (org, index) {
+      org.num = index + 1;
+      state.byKey[org.key] = org;
+    });
+    if (!state.byKey[state.activeKey]) state.activeKey = null;
 
     if (total === 0) {
       $("result-count").textContent = "No current listings. Check back soon.";
@@ -423,70 +455,127 @@
     if (newest) $("updated-date").textContent = formatDate(newest);
 
     syncMarkers(list);
+    updateWash();
   }
 
-  // ---------- Highlighting a card and its pin ----------
+  // ---------- Highlighting a card and its coin ----------
 
-  function scrollTo(node) {
+  function scrollTo(node, block) {
     if (node && node.scrollIntoView) {
-      node.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      node.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: block || "start" });
     }
   }
 
-  function selectOrg(key, from) {
-    state.selectedKey = key;
-
-    // Update the cards
+  // Marks one organization as the highlighted one, on its card and on the map. null clears it.
+  function setActive(key) {
+    state.activeKey = key;
     var cards = document.querySelectorAll(".card");
     for (var i = 0; i < cards.length; i++) {
-      var on = cards[i].id === "card-" + key;
-      cards[i].classList.toggle("is-highlighted", on);
-      var flag = cards[i].querySelector(".selected-flag");
-      if (flag) flag.hidden = !on;
+      cards[i].classList.toggle("is-active", cards[i].id === "card-" + key);
     }
-    // Update the pins
     Object.keys(state.markers).forEach(function (k) {
-      var pin = state.markers[k].getElement();
-      if (pin) pin.classList.toggle("is-selected", k === key);
+      var marker = state.markers[k];
+      var pin = marker.getElement();
+      if (pin) pin.classList.toggle("is-active", k === key);
+      marker.setZIndexOffset(k === key ? 1000 : 0);
     });
+  }
 
-    if (from === "pin") {
-      // A pin was tapped: go to its card.
-      var card = $("card-" + key);
-      if (card) {
-        scrollTo(card);
-        var heading = card.querySelector("h3");
-        if (heading) heading.focus({ preventScroll: true });
-      }
-    } else if (from === "card" && state.map && state.markers[key]) {
-      // "Show on map" was pressed: open the map and go to the pin.
-      setMapHidden(false);
-      var marker = state.markers[key];
-      state.map.setView(marker.getLatLng(), Math.max(state.map.getZoom(), 15), { animate: !reduceMotion });
-      scrollTo($("map-section"));
-      var pinNode = marker.getElement();
-      if (pinNode) pinNode.focus({ preventScroll: true });
+  function goToCard(key) {
+    var card = $("card-" + key);
+    if (!card) return;
+    scrollTo(card, isWide() ? "center" : "start");
+    var heading = card.querySelector("h3");
+    if (heading) heading.focus({ preventScroll: true });
+  }
+
+  // A coin on the map was tapped (or Enter was pressed on it).
+  function onPin(key) {
+    if (state.exploring) { showPeek(key); return; }
+    state.lockUntil = Date.now() + 1200;
+    setActive(key);
+    goToCard(key);
+    if (isWide()) flyToOrg(key);
+  }
+
+  // "Show on map" was pressed on a card.
+  function showOnMap(key) {
+    if (!state.map || !state.markers[key]) return;
+    if (isWide()) {
+      // Wide screens: the map is already beside the list, so just glide to the coin.
+      state.lockUntil = Date.now() + 1200;
+      setActive(key);
+      flyToOrg(key);
+      var pin = state.markers[key].getElement();
+      if (pin) pin.focus({ preventScroll: true });
+    } else {
+      // Phones: open the full-screen map on that coin.
+      openExplore(key);
     }
+  }
+
+  // ---------- The gray veil: fades with scrolling ----------
+
+  function clamp01(n) { return Math.max(0, Math.min(1, n)); }
+
+  // The map is a pale gray print at the top of the page, comes into full color as the
+  // list arrives, and goes gray again as "How this works" and the footer arrive.
+  function updateWash() {
+    if (state.exploring) return;
+    var vh = window.innerHeight || 1;
+    var stage = isWide() ? $("controls") : $("map-window");
+    var arriving = clamp01((stage.getBoundingClientRect().top - 0.35 * vh) / (0.5 * vh));
+    var leaving = clamp01((vh - $("how").getBoundingClientRect().top) / (0.5 * vh));
+    var wash = 0.9 * Math.max(arriving, leaving);
+    root.style.setProperty("--wash", wash.toFixed(3));
+
+    if (!state.bloomed && state.map && wash < 0.45) {
+      state.bloomed = true;
+      dropCoins();
+    }
+  }
+
+  // The one flourish: the first time the map comes into color, the coins drop onto it.
+  function dropCoins() {
+    if (reduceMotion) return;
+    Object.keys(state.markers).forEach(function (key, index) {
+      var pin = state.markers[key].getElement();
+      if (!pin) return;
+      pin.style.setProperty("--delay", (index * 0.07) + "s");
+      pin.classList.add("drop");
+      pin.addEventListener("animationend", function () { pin.classList.remove("drop"); }, { once: true });
+    });
+  }
+
+  // Wide screens: as the list scrolls, the map follows the card you're reading.
+  function followScroll() {
+    if (!isWide() || !state.map || state.exploring || Date.now() < state.lockUntil) return;
+    var vh = window.innerHeight || 1;
+    var probe = 0.42 * vh;
+    var cards = document.querySelectorAll(".card");
+    var best = null, bestGap = Infinity;
+    for (var i = 0; i < cards.length; i++) {
+      var box = cards[i].getBoundingClientRect();
+      if (box.bottom < 0.12 * vh || box.top > 0.88 * vh) continue;
+      var gap = box.top <= probe && box.bottom >= probe ? 0 : Math.min(Math.abs(box.top - probe), Math.abs(box.bottom - probe));
+      if (gap < bestGap) { bestGap = gap; best = cards[i]; }
+    }
+    if ($("org-list").getBoundingClientRect().top > 0.7 * vh) best = null;   // still at the top: show everything
+    var key = best ? best.id.replace("card-", "") : null;
+    if (key === state.activeKey) return;
+    setActive(key);
+    if (key) flyToOrg(key); else fitToPins(true);
   }
 
   // ---------- Map ----------
 
   function mapFailed() {
+    if (state.exploring) closeExplore();
     state.map = null;
-    $("map").hidden = true;
-    $("map-toggle").hidden = true;
-    $("map-holder").hidden = false;
+    document.body.classList.add("no-map");
     var note = $("map-note");
     note.textContent = "The map couldn't load. Every organization is in the list.";
     note.hidden = false;
-  }
-
-  function setMapHidden(hidden) {
-    var toggle = $("map-toggle");
-    $("map-holder").hidden = hidden;
-    toggle.textContent = hidden ? "Show map" : "Hide map";
-    toggle.setAttribute("aria-expanded", hidden ? "false" : "true");
-    if (!hidden && state.map) state.map.invalidateSize();
   }
 
   // Loads Leaflet's styles, then its script, then starts the map.
@@ -509,10 +598,14 @@
     try {
       var L = window.L;
       var map = L.map("map", {
+        zoomControl: false,
+        scrollWheelZoom: false,     // the mouse wheel scrolls the page, not the map
+        dragging: isWide(),         // on phones a finger scrolls the page; "Explore the map" turns dragging on
         fadeAnimation: !reduceMotion,
         zoomAnimation: !reduceMotion,
         markerZoomAnimation: !reduceMotion
       });
+      L.control.zoom({ position: "bottomright" }).addTo(map);
       map.attributionControl.setPrefix(false);
       map.setView(NYC_CENTER, 11);
 
@@ -525,7 +618,7 @@
       });
       tiles.on("tileerror", function () {
         if (loaded === 0) {
-          $("map-note").textContent = "The map background didn't load. The pins still work, and every organization is in the list.";
+          $("map-note").textContent = "The map background didn't load. The coins still work, and every organization is in the list.";
           $("map-note").hidden = false;
         }
       });
@@ -533,6 +626,12 @@
 
       state.markerLayer = L.layerGroup().addTo(map);
       state.map = map;
+
+      // Phones get the "Explore the map" button and the map credit. The credit text comes from config.js, not the sheet.
+      $("explore-open").hidden = false;
+      $("map-credit").innerHTML = TILE_ATTRIBUTION;
+      $("map-credit").hidden = false;
+
       render();          // redraw so cards get their "Show on map" buttons
       fitToPins();
     } catch (e) {
@@ -541,7 +640,7 @@
     }
   }
 
-  // Puts one pin on the map for each shown organization that has coordinates.
+  // Puts one numbered coin on the map for each shown organization that has coordinates.
   function syncMarkers(list) {
     if (!state.map) return;
     var L = window.L;
@@ -551,22 +650,24 @@
     list.forEach(function (org) {
       if (!org.hasPin) return;
       var marker = L.marker([org.lat, org.lng], {
-        icon: L.divIcon({ className: "pin", html: '<span class="pin-shape"></span>', iconSize: [44, 44], iconAnchor: [22, 44] }),
+        // org.num is a number made by this page, so it is safe to place in the marker.
+        icon: L.divIcon({ className: "pin", html: '<span class="coin">' + Number(org.num) + "</span>", iconSize: [44, 44], iconAnchor: [22, 22] }),
         title: org.name,
-        keyboard: true
+        keyboard: true,
+        zIndexOffset: org.key === state.activeKey ? 1000 : 0
       });
-      marker.on("click", function () { selectOrg(org.key, "pin"); });
+      marker.on("click", function () { onPin(org.key); });
       marker.addTo(state.markerLayer);
       var pin = marker.getElement();
       if (pin) {
-        // The pin's name for screen readers. setAttribute keeps it as plain text.
-        pin.setAttribute("aria-label", org.name + (org.neighborhood ? ", " + org.neighborhood : "") + ". Go to this organization in the list.");
-        pin.classList.toggle("is-selected", org.key === state.selectedKey);
-        // Enter or Space on a pin does the same as tapping it.
+        // The coin's name for screen readers. setAttribute keeps it as plain text.
+        pin.setAttribute("aria-label", org.num + ". " + org.name + (org.neighborhood ? ", " + org.neighborhood : "") + ". Go to this organization in the list.");
+        pin.classList.toggle("is-active", org.key === state.activeKey);
+        // Enter or Space on a coin does the same as tapping it.
         pin.addEventListener("keydown", function (event) {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            selectOrg(org.key, "pin");
+            onPin(org.key);
           }
         });
       }
@@ -574,14 +675,121 @@
     });
   }
 
-  function fitToPins() {
+  // How much of the left side of the screen the list column covers (wide screens only).
+  function leftCover() {
+    return isWide() ? Math.max(0, $("controls").getBoundingClientRect().right) : 0;
+  }
+
+  // Zooms out to show every coin, keeping them clear of the list column.
+  function fitToPins(animate) {
     if (!state.map) return;
     var points = Object.keys(state.markers).map(function (k) { return state.markers[k].getLatLng(); });
-    if (points.length) {
-      state.map.fitBounds(window.L.latLngBounds(points).pad(0.25), { maxZoom: 14, animate: false });
-    } else {
+    if (!points.length) {
       state.map.setView(NYC_CENTER, 11, { animate: false });
+      return;
     }
+    // On phones (outside "Explore the map") the coins are kept in the upper part of the screen,
+    // where the open window onto the map sits when you pause on it.
+    var bottomSpace = 100;
+    if (!isWide() && !state.exploring) {
+      bottomSpace = Math.max(100, (window.innerHeight || 600) - ($("map-window").offsetHeight - 50));
+    }
+    state.map.fitBounds(window.L.latLngBounds(points), {
+      paddingTopLeft: [leftCover() + 40, isWide() ? 90 : 60],
+      paddingBottomRight: [isWide() ? 70 : 40, bottomSpace],
+      maxZoom: 14,
+      animate: !!animate && !reduceMotion
+    });
+  }
+
+  // Glides to one coin. shiftX and shiftY keep it clear of the list column or the bottom sheet.
+  function flyToOrg(key, shiftY) {
+    var marker = state.markers[key];
+    if (!state.map || !marker) return;
+    var zoom = Math.min(16, Math.max(state.map.getZoom(), 14));
+    var point = state.map.project(marker.getLatLng(), zoom);
+    point.x -= leftCover() / 2;
+    point.y += (shiftY || 0) / 2;
+    var center = state.map.unproject(point, zoom);
+    if (reduceMotion) state.map.setView(center, zoom, { animate: false });
+    else state.map.flyTo(center, zoom, { duration: 0.9 });
+  }
+
+  // ---------- "Explore the map" (phones) ----------
+  // The page steps aside and the map takes the whole screen. Tapping a coin shows a small
+  // sheet with the organization's name and sign-up button.
+
+  function setPageInert(on) {
+    var nodes = document.querySelectorAll(".on-top, .org-list > li");
+    for (var i = 0; i < nodes.length; i++) {
+      if (on) nodes[i].setAttribute("inert", ""); else nodes[i].removeAttribute("inert");
+    }
+  }
+
+  function openExplore(key) {
+    if (!state.map) return;
+    state.exploring = true;
+    state.returnFocus = document.activeElement;
+    document.body.classList.add("is-exploring");
+    root.style.overflow = "hidden";
+    setPageInert(true);
+    $("explore-ui").hidden = false;
+    state.map.dragging.enable();
+    if (key) {
+      showPeek(key);
+    } else {
+      hidePeek();
+      setActive(null);
+      fitToPins(true);
+    }
+    $("explore-close").focus();
+  }
+
+  function closeExplore(goToKey) {
+    state.exploring = false;
+    document.body.classList.remove("is-exploring");
+    root.style.overflow = "";
+    root.style.removeProperty("--sheet");
+    setPageInert(false);
+    $("explore-ui").hidden = true;
+    hidePeek();
+    if (state.map && !isWide()) state.map.dragging.disable();
+    updateWash();
+    if (goToKey && state.byKey[goToKey]) {
+      setActive(goToKey);
+      goToCard(goToKey);
+    } else {
+      fitToPins();
+      if (state.returnFocus && state.returnFocus.focus) state.returnFocus.focus({ preventScroll: true });
+    }
+  }
+
+  function hidePeek() {
+    $("peek").hidden = true;
+    root.style.removeProperty("--sheet");
+  }
+
+  // Fills and shows the bottom sheet for one organization. All text is placed as plain text.
+  function showPeek(key) {
+    var org = state.byKey[key];
+    if (!org) return;
+    setActive(key);
+    $("peek-coin").textContent = String(org.num);
+    $("peek-name").textContent = org.name;
+    $("peek-where").textContent = [org.neighborhood, org.borough].filter(Boolean).join(", ");
+    var link = $("peek-signup");
+    if (org.signupUrl) {
+      fillSignupLink(link, org);
+      link.hidden = false;
+    } else {
+      link.removeAttribute("href");
+      link.hidden = true;
+    }
+    var peek = $("peek");
+    peek.hidden = false;
+    var sheetHeight = peek.offsetHeight + 24;
+    root.style.setProperty("--sheet", sheetHeight + "px");   // lifts the zoom buttons and credit above the sheet
+    flyToOrg(key, sheetHeight);
   }
 
   // ---------- Near me ----------
@@ -646,7 +854,7 @@
         var need = this.getAttribute("data-need");
         state.filters[need] = !state.filters[need];
         render();
-        fitToPins();
+        fitToPins(true);
       });
     }
 
@@ -664,9 +872,41 @@
       $("zip-note").hidden = false;
     }
 
-    $("map-toggle").addEventListener("click", function () {
-      setMapHidden(!$("map-holder").hidden);
+    // "Explore the map"
+    $("explore-open").addEventListener("click", function () { openExplore(null); });
+    $("explore-close").addEventListener("click", function () { closeExplore(); });
+    $("peek-details").addEventListener("click", function () { closeExplore(state.activeKey); });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && state.exploring) closeExplore();
     });
+  }
+
+  // Scrolling and resizing: fade the veil right away, and let the map follow once scrolling settles.
+  function setUpScrolling() {
+    var queued = false, settle = null;
+    function onMove() {
+      if (!queued) {
+        queued = true;
+        window.requestAnimationFrame(function () { queued = false; updateWash(); });
+      }
+      clearTimeout(settle);
+      settle = setTimeout(followScroll, 140);
+    }
+    window.addEventListener("scroll", onMove, { passive: true });
+    window.addEventListener("resize", onMove);
+
+    // Crossing between the phone layout and the wide layout
+    var onLayoutChange = function () {
+      if (state.exploring) closeExplore();
+      if (state.map) {
+        if (isWide()) state.map.dragging.enable(); else state.map.dragging.disable();
+        setActive(null);
+        fitToPins();
+      }
+      updateWash();
+    };
+    if (wideScreen.addEventListener) wideScreen.addEventListener("change", onLayoutChange);
+    else if (wideScreen.addListener) wideScreen.addListener(onLayoutChange);
   }
 
   function setUpFooterAndNotes() {
@@ -694,8 +934,10 @@
   }
 
   setUpControls();
+  setUpScrolling();
   setUpFooterAndNotes();
   setUpAnalytics();
+  updateWash();
 
   loadOrgs().then(function (orgs) {
     state.orgs = orgs;
